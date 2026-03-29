@@ -1,0 +1,532 @@
+{
+  "name": "Send Emails from Obsidian",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Obsidian to Email Overview\n\nThis workflow allows you to send your Obsidian notes (including attachments) via email, with YAML metadata for customization.\n\n### Key Features:\n- Trigger email sending through [Obsidian's Post Webhook plugin](https://github.com/Masterb1234/obsidian-post-webhook/).\n- Parse YAML frontmatter for email metadata like recipients, subject, and more.\n- Automatic handling of attachments (images/files) via base64 encoding.\n- Append Webhook response automatically to the bottom of your note in Obsidian",
+        "height": 388.5681601162638,
+        "width": 395.06030313757196
+      },
+      "id": "bd44dd91-c407-4bb5-b403-2292556db33e",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -192,
+        80
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## YAML Frontmatter Example\n\nUse YAML frontmatter in your Obsidian notes to define key email details such as recipients, subject, and more.\n\n### Example YAML:\n```yaml\n---\nto: \"recipient@example.com\"\ncc: \"cc@example.com\"\nbcc: \"bcc@example.com\"\nsubject: \"Your Obsidian Note\"\nsender-name: \"Your Name\"\nsend-replies-to: \"replies@example.com\"\n---\nNote content goes here...\n",
+        "height": 447.41755555994735,
+        "width": 398.9156829431131,
+        "color": 3
+      },
+      "id": "c831e5ec-88bb-4935-b823-0701c73ed0e9",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -192,
+        496
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "3d870306-d912-4582-960d-f031538a5045",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.body.attachments }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9baeeb19-ffca-4ca8-931e-3e69fa6f39d4",
+      "name": "Check if attachments exist",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        480,
+        432
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.attachments",
+        "options": {}
+      },
+      "id": "46efaa0b-f5cf-407d-a52a-30a8b2c2c012",
+      "name": "Separate attachment data",
+      "type": "n8n-nodes-base.splitOut",
+      "position": [
+        736,
+        272
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Attachment Handling\n\nThe plugin automatically handles attachments in your Obsidian notes.\n\nThis workflow automates the processing of attachments by converting each attachment into a binary format.\n",
+        "height": 874.8910456745886,
+        "width": 493.7005132824585,
+        "color": 4
+      },
+      "id": "a5fdfbdd-3883-4d24-81db-372f6ad2b8bb",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        688,
+        64
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "0db13e0d-b277-47e3-9ee6-208fb4776c45",
+      "name": "Process Each Attachment",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        736,
+        528
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data",
+        "options": {
+          "fileName": "={{ $json.name }}"
+        }
+      },
+      "id": "4ee2e289-4400-4721-a67e-9e7b40df60a3",
+      "name": "Convert Attachment to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "position": [
+        1040,
+        624
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "data"
+            }
+          ]
+        },
+        "options": {
+          "includeBinaries": true
+        }
+      },
+      "id": "284b4b4b-68a7-4bd0-ba68-c0ed6647ceaf",
+      "name": "Prepare Attachments for Email",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        1040,
+        448
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ Array.isArray($('Webhook').item.json.body.to) ? $('Webhook').item.json.body.to.join('; ') : $('Webhook').item.json.body.to }}",
+        "subject": "={{ $('Webhook').item.json.body.subject }}",
+        "emailType": "text",
+        "message": "={{ $('Webhook').item.json.body.content }}",
+        "options": {
+          "appendAttribution": false,
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {
+                "property": "={{ Object.keys($binary).join(',') }}"
+              }
+            ]
+          },
+          "bccList": "={{ $('Webhook').item.json.body.bcc ?? '' }}",
+          "ccList": "={{ $('Webhook').item.json.body.cc ?? '' }}",
+          "senderName": "={{ $('Webhook').item.json.body['sender-name'] ?? '' }}",
+          "replyTo": "={{ $('Webhook').item.json.body['send-replies-to'] ?? '' }}"
+        }
+      },
+      "id": "8ecff696-d9cc-45ad-bb97-bc2384017e13",
+      "name": "Email With Attachments",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        1248,
+        528
+      ],
+      "webhookId": "479fab78-5e9c-4dc9-ac36-fb656222cae7",
+      "typeVersion": 2.1,
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.to }}",
+        "subject": "={{ $json.body.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body.content }}",
+        "options": {
+          "bccList": "={{ $json.body?.bcc ?? '' }}",
+          "ccList": "={{ $json.body?.cc ?? '' }}",
+          "senderName": "={{ $json.body?.['sender-name'] ?? '' }}",
+          "replyTo": "={{ $json.body?.['send-replies-to'] ?? '' }}"
+        }
+      },
+      "id": "6bb4b915-14eb-4a08-9827-ec78c1c1e45d",
+      "name": "Email Without Attachments",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        1248,
+        768
+      ],
+      "webhookId": "479fab78-5e9c-4dc9-ac36-fb656222cae7",
+      "typeVersion": 2.1,
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "content": "## Obsidian Configuration\n\nInstall the [Obsidian Post Webhook plugin](https://github.com/Masterb1234/obsidian-post-webhook/).\n\n### How to set-up webhook connection:\n1. Set your webhook URL in the plugin settings.\n2. Use the built-in testing functionality to ensure your webhook is set up correctly.\n3. Open any note in Obsidian.\n4. Use the command palette (`Ctrl/Cmd + P`) to search for \"Send to Webhook\".\n5. Once sent, this workflow begins.",
+        "height": 866.9256684369553,
+        "width": 410.45568358442864,
+        "color": 6
+      },
+      "id": "371437b1-bdf5-41b1-b635-685a0e5e2e45",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        240,
+        64
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "![logo](https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/2023_Obsidian_logo.svg/512px-2023_Obsidian_logo.svg.png)",
+        "height": 264.2421600929918,
+        "color": 5
+      },
+      "id": "47dfdaa6-a9c2-4070-9907-748aa78f119e",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1408,
+        224
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "f9864a1c-3188-4640-82bd-2cddc8798b0f",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.body.test }}",
+              "rightValue": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "16cf281f-b8c3-4f13-8cf5-2633dcce30bb",
+      "name": "Check if it is a test",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        304,
+        752
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "content": "## Send Email and Respond\n\nAfter the email is sent, the workflow confirms the email's status and sends a response back to Obsidian.",
+        "height": 863.6667893577376,
+        "width": 457.22695080436733,
+        "color": 5
+      },
+      "id": "60c8b866-f71e-4615-addd-70ea78122890",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1232,
+        80
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=E-mail sent on  {{ new Date($json.currentDate).toLocaleString('en-GB', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', 'h') }}\n",
+        "options": {}
+      },
+      "id": "8e121271-56af-4ff2-a063-036a5257a54d",
+      "name": "Respond to Obsidian",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        1536,
+        656
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b72a1b54-978d-408c-876a-d3e103b1f667",
+              "name": "data",
+              "type": "string",
+              "value": "={{ $json.data.replace(/^data:.*?,/, '') }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "b1164c75-8972-4211-8e45-910a975b9045",
+      "name": "Fix Base64 string",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        896,
+        272
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=Test succesfull\n",
+        "options": {}
+      },
+      "id": "6e9a631b-6f85-48aa-895b-50089e44215c",
+      "name": "Test Succesfull",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        496,
+        672
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "1f27b63f-127b-4a7c-b276-9f7784e2b44e",
+      "name": "Get date",
+      "type": "n8n-nodes-base.dateTime",
+      "position": [
+        1408,
+        656
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "e634d721-48b0-4985-8a57-62ca4c7b3cfb",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "020a5588-bdae-4d20-a530-34d206e90451",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        288,
+        432
+      ],
+      "webhookId": "e634d721-48b0-4985-8a57-62ca4c7b3cfb",
+      "typeVersion": 2
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check if attachments exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get date": {
+      "main": [
+        [
+          {
+            "node": "Respond to Obsidian",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fix Base64 string": {
+      "main": [
+        [
+          {
+            "node": "Process Each Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if it is a test": {
+      "main": [
+        [
+          {
+            "node": "Test Succesfull",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Without Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email With Attachments": {
+      "main": [
+        [
+          {
+            "node": "Get date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Each Attachment": {
+      "main": [
+        [
+          {
+            "node": "Prepare Attachments for Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Convert Attachment to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separate attachment data": {
+      "main": [
+        [
+          {
+            "node": "Fix Base64 string",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Without Attachments": {
+      "main": [
+        [
+          {
+            "node": "Get date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if attachments exist": {
+      "main": [
+        [
+          {
+            "node": "Separate attachment data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check if it is a test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Attachment to File": {
+      "main": [
+        [
+          {
+            "node": "Process Each Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Attachments for Email": {
+      "main": [
+        [
+          {
+            "node": "Email With Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c27e3b8a-aa12-4576-9d2d-1f983d6bdffc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": ""
+  },
+  "id": "0kGHNUfpT8BrxlNd",
+  "tags": []
+}
