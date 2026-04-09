@@ -74,6 +74,6 @@ send-emails-from-obsidian/
 
 ---
 
-## 📄 License
+MIT License
 
-MIT License — free to use and modify.
+Copyright (c) 2026 mnloop2020-byte
